@@ -13,17 +13,17 @@ export async function startIDEServer(_context: vscode.ExtensionContext) {
   const app = express();
   app.use(express.json());
 
+  const mcpServer = createMcpServer();
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+    enableJsonResponse: true,
+  });
+
+  mcpServer.connect(transport);
+
   app.post('/mcp', async (req: Request, res: Response) => {
     console.log('Received MCP request:', req.body);
     try {
-      // Check for existing session ID
-      let transport: StreamableHTTPServerTransport;
-      transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined,
-        enableJsonResponse: true,
-      });
-      const server = getServer();
-      await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
       console.error('Error handling MCP request:', error);
@@ -63,12 +63,7 @@ export async function startIDEServer(_context: vscode.ExtensionContext) {
   });
 }
 
-const getServer = () => {
-  const options = {
-    sessionIdGenerator: undefined,
-  };
-  const transport = new StreamableHTTPServerTransport(options);
-
+const createMcpServer = () => {
   const server = new McpServer({
     name: 'vscode-ide-server',
     version: '1.0.0',
