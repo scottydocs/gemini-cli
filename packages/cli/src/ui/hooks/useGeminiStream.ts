@@ -54,7 +54,7 @@ import {
   TrackedCancelledToolCall,
 } from './useReactToolScheduler.js';
 import { useSessionStats } from '../contexts/SessionContext.js';
-import { useLoopBreaker } from './useLoopBreaker.js';
+import { useLoopJudge } from './useLoopJudge.js';
 
 export function mergePartListUnions(list: PartListUnion[]): PartListUnion {
   const resultParts: PartListUnion = [];
@@ -208,7 +208,7 @@ export const useGeminiStream = (
     }
   });
 
-  useLoopBreaker(history, streamingState, cancelRequest);
+  useLoopJudge(history, streamingState, cancelRequest);
 
   const prepareQueryForGemini = useCallback(
     async (

@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useLoopBreaker } from './useLoopBreaker.js';
+import { useLoopJudge } from './useLoopJudge.js';
 import { HistoryItem, StreamingState, ToolCall, ToolGroup } from '../types.js';
 import crypto from 'crypto';
 
@@ -39,7 +39,7 @@ const createMockToolGroup = (tools: ToolCall[]): ToolGroup => ({
   tools,
 });
 
-describe('useLoopBreaker', () => {
+describe('useLoopJudge', () => {
   let cancelRequest: (reason: string) => void;
 
   beforeEach(() => {
@@ -62,16 +62,14 @@ describe('useLoopBreaker', () => {
 
   it('should not call cancelRequest when streamingState is Idle', () => {
     const history: HistoryItem[] = [];
-    renderHook(() =>
-      useLoopBreaker(history, StreamingState.Idle, cancelRequest),
-    );
+    renderHook(() => useLoopJudge(history, StreamingState.Idle, cancelRequest));
     expect(cancelRequest).not.toHaveBeenCalled();
   });
 
   it('should not call cancelRequest when streamingState is Input', () => {
     const history: HistoryItem[] = [];
     renderHook(() =>
-      useLoopBreaker(history, StreamingState.Input, cancelRequest),
+      useLoopJudge(history, StreamingState.Input, cancelRequest),
     );
     expect(cancelRequest).not.toHaveBeenCalled();
   });
@@ -82,7 +80,7 @@ describe('useLoopBreaker', () => {
 
     const { rerender } = renderHook(
       ({ history, streamingState }) =>
-        useLoopBreaker(history, streamingState, cancelRequest),
+        useLoopJudge(history, streamingState, cancelRequest),
       {
         initialProps: {
           history: [],
@@ -98,7 +96,7 @@ describe('useLoopBreaker', () => {
   it('should not call cancelRequest if the last history item is not a tool_group', () => {
     const history: HistoryItem[] = [{ type: 'user', parts: [] }];
     renderHook(() =>
-      useLoopBreaker(history, StreamingState.Responding, cancelRequest),
+      useLoopJudge(history, StreamingState.Responding, cancelRequest),
     );
     expect(cancelRequest).not.toHaveBeenCalled();
   });
@@ -109,7 +107,7 @@ describe('useLoopBreaker', () => {
 
     const { rerender } = renderHook(
       ({ history, streamingState }) =>
-        useLoopBreaker(history, streamingState, cancelRequest),
+        useLoopJudge(history, streamingState, cancelRequest),
       {
         initialProps: {
           history,
@@ -135,7 +133,7 @@ describe('useLoopBreaker', () => {
 
     const { rerender } = renderHook(
       ({ history, streamingState }) =>
-        useLoopBreaker(history, streamingState, cancelRequest),
+        useLoopJudge(history, streamingState, cancelRequest),
       {
         initialProps: {
           history,
@@ -156,7 +154,7 @@ describe('useLoopBreaker', () => {
     let history: HistoryItem[] = [];
     const { rerender } = renderHook(
       ({ history, streamingState }) =>
-        useLoopBreaker(history, streamingState, cancelRequest),
+        useLoopJudge(history, streamingState, cancelRequest),
       {
         initialProps: {
           history,
@@ -178,7 +176,7 @@ describe('useLoopBreaker', () => {
     let history: HistoryItem[] = [];
     const { rerender } = renderHook(
       ({ history, streamingState }) =>
-        useLoopBreaker(history, streamingState, cancelRequest),
+        useLoopJudge(history, streamingState, cancelRequest),
       {
         initialProps: {
           history,
@@ -202,7 +200,7 @@ describe('useLoopBreaker', () => {
 
     const { rerender } = renderHook(
       ({ history, streamingState }) =>
-        useLoopBreaker(history, streamingState, cancelRequest),
+        useLoopJudge(history, streamingState, cancelRequest),
       {
         initialProps: {
           history,
@@ -246,7 +244,7 @@ describe('useLoopBreaker', () => {
     vi.spyOn(crypto, 'createHash').mockImplementation(createHash);
 
     renderHook(() =>
-      useLoopBreaker(history, StreamingState.Responding, cancelRequest),
+      useLoopJudge(history, StreamingState.Responding, cancelRequest),
     );
 
     expect(crypto.createHash).toHaveBeenCalledWith('sha256');

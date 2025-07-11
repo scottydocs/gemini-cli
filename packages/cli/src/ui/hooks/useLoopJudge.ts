@@ -22,7 +22,7 @@ const LOOP_THRESHOLD = 5;
  * @param streamingState The current streaming state of the application.
  * @param cancelRequest A function to call to cancel the ongoing request.
  */
-export const useLoopBreaker = (
+export const useLoopJudge = (
   history: HistoryItem[],
   streamingState: StreamingState,
   cancelRequest: (reason: string) => void,
