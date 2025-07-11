@@ -129,6 +129,7 @@ describe('InputPrompt', () => {
       config: {
         getProjectRoot: () => '/test/project',
         getTargetDir: () => '/test/project/src',
+        getVimMode: () => false,
       } as unknown as Config,
       slashCommands: [],
       commandContext: mockCommandContext,

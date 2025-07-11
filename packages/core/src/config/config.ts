@@ -501,10 +501,6 @@ export class Config {
     return this._activeExtensions;
   }
 
-  getVimMode(): boolean {
-    return this.vimMode;
-  }
-
   getNoBrowser(): boolean {
     return this.noBrowser;
   }

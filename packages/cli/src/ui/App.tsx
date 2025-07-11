@@ -68,6 +68,7 @@ import {
 import { useGitBranchName } from './hooks/useGitBranchName.js';
 import { useBracketedPaste } from './hooks/useBracketedPaste.js';
 import { useTextBuffer } from './components/shared/text-buffer.js';
+import { useVim } from './hooks/vim.js';
 import * as fs from 'fs';
 import { UpdateNotification } from './components/UpdateNotification.js';
 import {
@@ -415,6 +416,9 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
     isValidPath,
     shellModeActive,
   });
+
+  // Initialize vim mode
+  const { mode: vimMode } = useVim(buffer, config);
 
   const handleExit = useCallback(
     (
@@ -929,6 +933,12 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
                   shellModeActive={shellModeActive}
                   setShellModeActive={setShellModeActive}
                 />
+              )}
+
+              {config.getVimMode() && isInputActive && (
+                <Box>
+                  <Text color={Colors.AccentCyan}>[{vimMode}]</Text>
+                </Box>
               )}
             </>
           )}
