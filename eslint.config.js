@@ -34,7 +34,7 @@ export default tseslint.config(
       'packages/core/dist/**',
       'packages/server/dist/**',
       'packages/a2alib/dist/**',
-      'packages/ide-companion/dist/**',
+      'packages/vscode-ide-companion/dist/**',
       'packages/screenreader-accessible-cli/dist/**',
       'eslint-rules/*',
       'bundle/**',

@@ -1,6 +1,6 @@
 {
-  "name": "gemini-cli-vscode",
-  "displayName": "Gemini CLI for VS Code",
+  "name": "gemini-cli-vscode-ide-companion",
+  "displayName": "Gemini CLI VSCode IDE Companion",
   "description": "",
   "version": "0.0.1",
   "engines": {
