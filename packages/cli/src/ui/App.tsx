@@ -101,8 +101,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     checkForUpdates().then(setUpdateMessage);
   }, []);
 
-  const { history, addItem, setAddItemListener, clearItems, loadHistory } =
-    useHistory();
+  const { history, addItem, clearItems, loadHistory } = useHistory();
   const {
     consoleMessages,
     handleNewMessage,
@@ -476,7 +475,6 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     config.getGeminiClient(),
     history,
     addItem,
-    setAddItemListener,
     setShowHelp,
     config,
     setDebugMessage,

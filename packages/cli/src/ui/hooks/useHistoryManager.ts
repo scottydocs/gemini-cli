@@ -4,15 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { HistoryItem } from '../types.js';
 
 // Type for the updater function passed to updateHistoryItem
 type HistoryItemUpdater = (
   prevItem: HistoryItem,
 ) => Partial<Omit<HistoryItem, 'id'>>;
-
-type AddItemListener = (item: HistoryItem) => void;
 
 export interface UseHistoryManagerReturn {
   history: HistoryItem[];
@@ -23,7 +21,6 @@ export interface UseHistoryManagerReturn {
   ) => void;
   clearItems: () => void;
   loadHistory: (newHistory: HistoryItem[]) => void;
-  setAddItemListener: (listener: AddItemListener | null) => void;
 }
 
 /**
@@ -35,23 +32,6 @@ export interface UseHistoryManagerReturn {
 export function useHistory(): UseHistoryManagerReturn {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const messageIdCounterRef = useRef(0);
-  const addItemListenerRef = useRef<AddItemListener | null>(null);
-  const prevHistoryRef = useRef(history);
-
-  // This effect is responsible for calling the listener when a new item is added.
-  // It's the correct place for side effects that respond to state changes.
-  useEffect(() => {
-    // We only want to trigger the listener for items added via `addItem`.
-    // We check if the history length has grown and if the new last item
-    // was not present in the previous history state.
-    if (history.length > prevHistoryRef.current.length) {
-      const lastItem = history[history.length - 1];
-      if (!prevHistoryRef.current.some((item) => item.id === lastItem.id)) {
-        addItemListenerRef.current?.(lastItem);
-      }
-    }
-    prevHistoryRef.current = history;
-  }, [history]);
 
   // Generates a unique message ID based on a timestamp and a counter.
   const getNextMessageId = useCallback((baseTimestamp: number): number => {
@@ -61,9 +41,6 @@ export function useHistory(): UseHistoryManagerReturn {
 
   const loadHistory = useCallback((newHistory: HistoryItem[]) => {
     setHistory(newHistory);
-    // When loading history, we update the prevHistoryRef to prevent the effect
-    // from firing and treating it as a new item addition.
-    prevHistoryRef.current = newHistory;
   }, []);
 
   // Adds a new item to the history state with a unique ID.
@@ -122,12 +99,6 @@ export function useHistory(): UseHistoryManagerReturn {
   const clearItems = useCallback(() => {
     setHistory([]);
     messageIdCounterRef.current = 0;
-    // Also update prevHistoryRef on clear.
-    prevHistoryRef.current = [];
-  }, []);
-
-  const setAddItemListener = useCallback((listener: AddItemListener | null) => {
-    addItemListenerRef.current = listener;
   }, []);
 
   return {
@@ -136,6 +107,5 @@ export function useHistory(): UseHistoryManagerReturn {
     updateItem,
     clearItems,
     loadHistory,
-    setAddItemListener,
   };
 }
