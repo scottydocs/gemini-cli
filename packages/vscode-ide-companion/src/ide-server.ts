@@ -51,15 +51,11 @@ export async function startIDEServer(_context: vscode.ExtensionContext) {
   app.listen(PORT, (error) => {
     if (error) {
       console.error('Failed to start server:', error);
-      process.exit(1);
+      vscode.window.showErrorMessage(
+        `Companion server failed to start on port ${PORT}: ${error.message}`,
+      );
     }
     console.log(`MCP Streamable HTTP Server listening on port ${PORT}`);
-  });
-
-  // Handle server shutdown
-  process.on('SIGINT', async () => {
-    console.log('Shutting down server...');
-    process.exit(0);
   });
 }
 
