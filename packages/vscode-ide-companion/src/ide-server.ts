@@ -46,6 +46,7 @@ export async function startIDEServer(_context: vscode.ExtensionContext) {
   });
 
   // Start the server
+  // TODO(#3918): Generate dynamically and write to env variable
   const PORT = 3000;
   app.listen(PORT, (error) => {
     if (error) {
