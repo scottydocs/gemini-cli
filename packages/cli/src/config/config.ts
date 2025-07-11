@@ -326,7 +326,8 @@ export async function loadCliConfig(
     noBrowser: !!process.env.NO_BROWSER,
     ideMode:
       (argv.ideMode ?? settings.ideMode ?? false) &&
-      process.env.TERM_PROGRAM === 'vscode',
+      process.env.TERM_PROGRAM === 'vscode' &&
+      !process.env.SANDBOX,
   });
 }
 
