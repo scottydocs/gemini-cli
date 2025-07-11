@@ -7,7 +7,7 @@
 import * as vscode from 'vscode';
 import { startIDEServer } from './ide-server';
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   startIDEServer(context);
 }
 
