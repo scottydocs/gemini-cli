@@ -597,3 +597,62 @@ describe('loadCliConfig extensions', () => {
     expect(config.getExtensionContextFilePaths()).toEqual(['/path/to/ext1.md']);
   });
 });
+
+describe('loadCliConfig ideMode', () => {
+  const originalArgv = process.argv;
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(os.homedir).mockReturnValue('/mock/home/user');
+    process.env.GEMINI_API_KEY = 'test-api-key';
+  });
+
+  afterEach(() => {
+    process.argv = originalArgv;
+    process.env = originalEnv;
+    vi.restoreAllMocks();
+  });
+
+  it('should set ideMode to false by default', async () => {
+    process.argv = ['node', 'script.js'];
+    const settings: Settings = {};
+    const config = await loadCliConfig(settings, [], 'test-session');
+    expect(config.getIdeMode()).toBe(false);
+  });
+
+  it('should set ideMode to true when --ide-mode flag is present', async () => {
+    process.argv = ['node', 'script.js', '--ide-mode'];
+    const settings: Settings = {};
+    const config = await loadCliConfig(settings, [], 'test-session');
+    expect(config.getIdeMode()).toBe(true);
+  });
+
+  it('should use ideMode value from settings if CLI flag is not present (settings true)', async () => {
+    process.argv = ['node', 'script.js'];
+    const settings: Settings = { ideMode: true };
+    const config = await loadCliConfig(settings, [], 'test-session');
+    expect(config.getIdeMode()).toBe(true);
+  });
+
+  it('should use ideMode value from settings if CLI flag is not present (settings false)', async () => {
+    process.argv = ['node', 'script.js'];
+    const settings: Settings = { ideMode: false };
+    const config = await loadCliConfig(settings, [], 'test-session');
+    expect(config.getIdeMode()).toBe(false);
+  });
+
+  it('should prioritize --ide-mode CLI flag (true) over settings (false)', async () => {
+    process.argv = ['node', 'script.js', '--ide-mode'];
+    const settings: Settings = { ideMode: false };
+    const config = await loadCliConfig(settings, [], 'test-session');
+    expect(config.getIdeMode()).toBe(true);
+  });
+
+  it('should prioritize --no-ide-mode CLI flag (false) over settings (true)', async () => {
+    process.argv = ['node', 'script.js', '--no-ide-mode'];
+    const settings: Settings = { ideMode: true };
+    const config = await loadCliConfig(settings, [], 'test-session');
+    expect(config.getIdeMode()).toBe(false);
+  });
+});

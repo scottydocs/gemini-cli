@@ -53,6 +53,7 @@ interface CliArgs {
   allowedMcpServerNames: string[] | undefined;
   extensions: string[] | undefined;
   listExtensions: boolean | undefined;
+  ideMode: boolean | undefined;
 }
 
 async function parseArguments(): Promise<CliArgs> {
@@ -167,6 +168,10 @@ async function parseArguments(): Promise<CliArgs> {
       alias: 'l',
       type: 'boolean',
       description: 'List all available extensions and exit.',
+    })
+    .option('ide-mode', {
+      type: 'boolean',
+      description: 'Run in IDE mode?',
     })
 
     .version(await getCliVersion()) // This will enable the --version flag based on package.json
@@ -319,6 +324,7 @@ export async function loadCliConfig(
       version: e.config.version,
     })),
     noBrowser: !!process.env.NO_BROWSER,
+    ideMode: argv.ideMode ?? settings.ideMode ?? false,
   });
 }
 
