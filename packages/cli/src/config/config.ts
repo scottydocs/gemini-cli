@@ -17,6 +17,7 @@ import {
   DEFAULT_GEMINI_EMBEDDING_MODEL,
   FileDiscoveryService,
   TelemetryTarget,
+  MCPServerConfig,
 } from '@google/gemini-cli-core';
 import { Settings } from './settings.js';
 
@@ -221,6 +222,11 @@ export async function loadCliConfig(
       (v) => v === 'true' || v === '1',
     );
 
+  const ideMode =
+    (argv.ideMode ?? settings.ideMode ?? false) &&
+    process.env.TERM_PROGRAM === 'vscode' &&
+    !process.env.SANDBOX;
+
   const activeExtensions = filterActiveExtensions(
     extensions,
     argv.extensions || [],
@@ -262,6 +268,24 @@ export async function loadCliConfig(
     } else {
       mcpServers = {};
     }
+  }
+
+  if (ideMode) {
+    mcpServers['_ide_server'] = new MCPServerConfig(
+      undefined, // command
+      undefined, // args
+      undefined, // env
+      undefined, // cwd
+      undefined, // url
+      'http://localhost:3000/mcp', // httpUrl
+      undefined, // headers
+      undefined, // tcp
+      undefined, // timeout
+      true, // trust
+      'IDE connection', // description
+      undefined, // includeTools
+      undefined, // excludeTools
+    );
   }
 
   const sandboxConfig = await loadSandboxConfig(settings, argv);
@@ -324,10 +348,7 @@ export async function loadCliConfig(
       version: e.config.version,
     })),
     noBrowser: !!process.env.NO_BROWSER,
-    ideMode:
-      (argv.ideMode ?? settings.ideMode ?? false) &&
-      process.env.TERM_PROGRAM === 'vscode' &&
-      !process.env.SANDBOX,
+    ideMode,
   });
 }
 

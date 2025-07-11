@@ -687,4 +687,17 @@ describe('loadCliConfig ideMode', () => {
     const config = await loadCliConfig(settings, [], 'test-session');
     expect(config.getIdeMode()).toBe(false);
   });
+
+  it('should add __ide_server when ideMode is true', async () => {
+    process.argv = ['node', 'script.js', '--ide-mode'];
+    process.env.TERM_PROGRAM = 'vscode';
+    const settings: Settings = {};
+    const config = await loadCliConfig(settings, [], 'test-session');
+    expect(config.getIdeMode()).toBe(true);
+    const mcpServers = config.getMcpServers();
+    expect(mcpServers['_ide_server']).toBeDefined();
+    expect(mcpServers['_ide_server'].httpUrl).toBe('http://localhost:3000/mcp');
+    expect(mcpServers['_ide_server'].description).toBe('IDE connection');
+    expect(mcpServers['_ide_server'].trust).toBe(true);
+  });
 });
