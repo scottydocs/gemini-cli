@@ -69,6 +69,7 @@ import { useGitBranchName } from './hooks/useGitBranchName.js';
 import { useBracketedPaste } from './hooks/useBracketedPaste.js';
 import { useTextBuffer } from './components/shared/text-buffer.js';
 import { useVim } from './hooks/vim.js';
+import type { Key } from './hooks/useKeypress.js';
 import * as fs from 'fs';
 import { UpdateNotification } from './components/UpdateNotification.js';
 import {
@@ -544,11 +545,20 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
   // Create a ref for vim toggle function to avoid circular dependency
   const toggleVimModeRef = useRef<(() => void) | null>(null);
   
-  // Initialize vim mode
-  const { mode: vimMode, vimModeEnabled, toggleVimMode } = useVim(buffer, config, settings, handleFinalSubmit);
+  // Create a ref for completion handler to avoid circular dependency
+  const completionHandlerRef = useRef<((key: Key) => boolean) | null>(null);
+  
+  // Initialize vim mode with a function that always gets the current completion handler
+  const getCompletionHandler = useCallback(() => completionHandlerRef.current, []);
+  const { mode: vimMode, vimModeEnabled, toggleVimMode } = useVim(buffer, config, settings, handleFinalSubmit, getCompletionHandler);
   
   // Store the toggle function in the ref
   toggleVimModeRef.current = toggleVimMode;
+
+  // Callback to receive completion handler from InputPrompt
+  const handleCompletionHandlerReady = useCallback((handler: (key: Key) => boolean) => {
+    completionHandlerRef.current = handler;
+  }, []);
 
   const logger = useLogger();
   const [userMessages, setUserMessages] = useState<string[]>([]);
@@ -941,6 +951,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
                   shellModeActive={shellModeActive}
                   setShellModeActive={setShellModeActive}
                   vimModeEnabled={vimModeEnabled}
+                  onCompletionHandlerReady={handleCompletionHandlerReady}
                 />
               )}
 
