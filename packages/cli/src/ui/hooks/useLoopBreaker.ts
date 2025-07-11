@@ -64,10 +64,7 @@ export const useLoopBreaker = (
       ].join('-');
 
       // Hash to reduce length
-      const hash = crypto
-        .createHash('sha256')
-        .update(signature)
-        .digest('hex');
+      const hash = crypto.createHash('sha256').update(signature).digest('hex');
 
       const currentCount = toolCallCounts.current.get(hash) || 0;
       const newCount = currentCount + 1;
