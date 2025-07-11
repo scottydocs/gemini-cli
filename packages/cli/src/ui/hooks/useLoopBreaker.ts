@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import crypto from 'crypto';
 import { HistoryItem, StreamingState } from '../types.js';
 
@@ -18,61 +18,72 @@ const LOOP_THRESHOLD = 5;
  * being repeated multiple times, it triggers a cancellation of the current
  * request to prevent infinite loops.
  *
+ * @param history The full history of the conversation.
  * @param streamingState The current streaming state of the application.
  * @param cancelRequest A function to call to cancel the ongoing request.
- * @returns An object containing the `checkForLoop` function.
  */
 export const useLoopBreaker = (
+  history: HistoryItem[],
   streamingState: StreamingState,
   cancelRequest: (reason: string) => void,
 ) => {
-  const prevToolCalls = useRef(new Map<string, number>());
+  const toolCallCounts = useRef(new Map<string, number>());
+  const lastHistoryLength = useRef(0);
 
   useEffect(() => {
+    // Reset counts when a new turn starts (indicated by Idle state).
     if (streamingState === StreamingState.Idle) {
-      prevToolCalls.current.clear();
+      toolCallCounts.current.clear();
+      lastHistoryLength.current = 0;
+      return;
     }
-  }, [streamingState]);
 
-  /**
-   * Checks the given history item for potential loops.
-   * This should be called whenever a new item is added to the history.
-   */
-  const checkForLoop = useCallback(
-    (item: HistoryItem) => {
-      if (item.type === 'tool_group') {
-        for (const toolCall of item.tools) {
-          // Create a unique signature for the tool call result.
-          const signature = crypto
-            .createHash('sha256')
-            .update(
-              [
-                toolCall.name,
-                toolCall.description,
-                toolCall.resultDisplay,
-              ].join('-'),
-            )
-            .digest('hex');
-          console.log(signature);
-          const currentCount = prevToolCalls.current.get(signature) || 0;
-          prevToolCalls.current.set(signature, currentCount + 1);
-        }
+    // Only check for loops when actively receiving a response.
+    if (streamingState !== StreamingState.Responding) {
+      return;
+    }
+
+    // Only check if history has grown.
+    if (history.length <= lastHistoryLength.current) {
+      return;
+    }
+
+    const lastItem = history[history.length - 1];
+    if (lastItem.type !== 'tool_group') {
+      lastHistoryLength.current = history.length;
+      return;
+    }
+
+    let loopDetected = false;
+    for (const toolCall of lastItem.tools) {
+      // Create a unique signature for the tool call result.
+      const signature = [
+        toolCall.name,
+        toolCall.description,
+        JSON.stringify(toolCall.resultDisplay),
+      ].join('-');
+
+      // Hash to reduce length
+      const hash = crypto
+        .createHash('sha256')
+        .update(signature)
+        .digest('hex');
+
+      const currentCount = toolCallCounts.current.get(hash) || 0;
+      const newCount = currentCount + 1;
+      toolCallCounts.current.set(hash, newCount);
+
+      if (newCount >= LOOP_THRESHOLD) {
+        loopDetected = true;
       }
+    }
 
-      // Check if any tool call has been repeated too many times.
-      if (
-        streamingState === StreamingState.Responding &&
-        Array.from(prevToolCalls.current.values()).some(
-          (value) => value >= LOOP_THRESHOLD,
-        )
-      ) {
-        cancelRequest(
-          'A potential loop was detected due to repetitive tool calls. The request has been cancelled. Please try again with a more specific prompt.',
-        );
-      }
-    },
-    [streamingState, cancelRequest],
-  );
+    if (loopDetected) {
+      cancelRequest(
+        'A potential loop was detected due to repetitive tool calls. The request has been cancelled. Please try again with a more specific prompt.',
+      );
+    }
 
-  return { checkForLoop };
+    lastHistoryLength.current = history.length;
+  }, [history, streamingState, cancelRequest]);
 };

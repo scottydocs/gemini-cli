@@ -209,21 +209,7 @@ export const useGeminiStream = (
     }
   });
 
-  const { checkForLoop } = useLoopBreaker(streamingState, cancelRequest);
-
-  const onHistoryItemAdded = useCallback(
-    (item: HistoryItem) => {
-      checkForLoop(item);
-    },
-    [checkForLoop],
-  );
-
-  useEffect(() => {
-    setAddItemListener(onHistoryItemAdded);
-    return () => {
-      setAddItemListener(null);
-    };
-  }, [setAddItemListener, onHistoryItemAdded]);
+  useLoopBreaker(history, streamingState, cancelRequest);
 
   const prepareQueryForGemini = useCallback(
     async (
