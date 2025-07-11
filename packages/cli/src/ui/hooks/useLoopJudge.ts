@@ -48,13 +48,12 @@ export const useLoopJudge = (
       return;
     }
 
+    lastHistoryLength.current = history.length;
     const lastItem = history[history.length - 1];
     if (lastItem.type !== 'tool_group') {
-      lastHistoryLength.current = history.length;
       return;
     }
 
-    let loopDetected = false;
     for (const toolCall of lastItem.tools) {
       // Create a unique signature for the tool call result.
       const signature = [
@@ -71,16 +70,12 @@ export const useLoopJudge = (
       toolCallCounts.current.set(hash, newCount);
 
       if (newCount >= LOOP_THRESHOLD) {
-        loopDetected = true;
+        cancelRequest(
+          'A potential loop was detected due to repetitive tool calls. The request has been cancelled. Please try again with a more specific prompt.',
+        );
+        // Exit early since the request is now cancelled.
+        return;
       }
     }
-
-    if (loopDetected) {
-      cancelRequest(
-        'A potential loop was detected due to repetitive tool calls. The request has been cancelled. Please try again with a more specific prompt.',
-      );
-    }
-
-    lastHistoryLength.current = history.length;
   }, [history, streamingState, cancelRequest]);
 };
