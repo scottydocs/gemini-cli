@@ -240,7 +240,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
       if (!focus) {
         return;
       }
-      
+
       // When vim mode is enabled, let vim hook handle input first
       if (vimModeEnabled && vimHandleInput) {
         const handled = vimHandleInput(key);
