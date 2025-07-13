@@ -54,7 +54,6 @@ import {
   TrackedCancelledToolCall,
 } from './useReactToolScheduler.js';
 import { useSessionStats } from '../contexts/SessionContext.js';
-import { useLoopJudge } from './useLoopJudge.js';
 
 export function mergePartListUnions(list: PartListUnion[]): PartListUnion {
   const resultParts: PartListUnion = [];
@@ -179,8 +178,8 @@ export const useGeminiStream = (
     return StreamingState.Idle;
   }, [isResponding, toolCalls]);
 
-  const cancelRequest = useCallback(
-    (reason: string) => {
+  useInput((_input, key) => {
+    if (streamingState === StreamingState.Responding && key.escape) {
       if (turnCancelledRef.current) {
         return;
       }
@@ -192,23 +191,14 @@ export const useGeminiStream = (
       addItem(
         {
           type: MessageType.INFO,
-          text: reason,
+          text: 'Request cancelled.',
         },
         Date.now(),
       );
       setPendingHistoryItem(null);
       setIsResponding(false);
-    },
-    [addItem, pendingHistoryItemRef, setPendingHistoryItem],
-  );
-
-  useInput((_input, key) => {
-    if (streamingState === StreamingState.Responding && key.escape) {
-      cancelRequest('Request cancelled.');
     }
   });
-
-  useLoopJudge(history, streamingState, cancelRequest);
 
   const prepareQueryForGemini = useCallback(
     async (
@@ -460,6 +450,16 @@ export const useGeminiStream = (
     [addItem, config],
   );
 
+  const handleLoopDetectedEvent = useCallback(() => {
+    addItem(
+      {
+        type: 'info',
+        text: `A potential loop was detected due to repetitive tool calls. The request has been cancelled. Please try again with a more specific prompt.`,
+      },
+      Date.now(),
+    );
+  }, [addItem]);
+
   const processGeminiStreamEvents = useCallback(
     async (
       stream: AsyncIterable<GeminiEvent>,
@@ -499,6 +499,9 @@ export const useGeminiStream = (
           case ServerGeminiEventType.MaxSessionTurns:
             handleMaxSessionTurnsEvent();
             break;
+          case ServerGeminiEventType.LoopDetected:
+            handleLoopDetectedEvent();
+            break;
           default: {
             // enforces exhaustive switch-case
             const unreachable: never = event;
@@ -518,6 +521,7 @@ export const useGeminiStream = (
       scheduleToolCalls,
       handleChatCompressionEvent,
       handleMaxSessionTurnsEvent,
+      handleLoopDetectedEvent,
     ],
   );
 
