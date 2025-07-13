@@ -14,6 +14,8 @@ const MAX_LOOPBACK_WINDOW = 1000;
 export class LoopDetectionService {
   private toolCallCounts = new Map<string, number>();
   private accumulatedContent = '';
+  private cachedSentences: string[] = [];
+  private lastContentLength = 0;
 
   private getToolCallKey(toolCall: { name: string; args: object }): string {
     // Stringify args for a consistent key.
@@ -36,9 +38,12 @@ export class LoopDetectionService {
 
         // Limit the accumulated content length.
         if (this.accumulatedContent.length > MAX_LOOPBACK_WINDOW) {
-          this.accumulatedContent = this.accumulatedContent.slice(
-            this.accumulatedContent.length - MAX_LOOPBACK_WINDOW,
-          );
+          const trimLength =
+            this.accumulatedContent.length - MAX_LOOPBACK_WINDOW;
+          this.accumulatedContent = this.accumulatedContent.slice(trimLength);
+          // Reset cache when content is trimmed
+          this.cachedSentences = [];
+          this.lastContentLength = 0;
         }
 
         // We only check for repetition when a sentence is likely to be complete,
@@ -47,29 +52,41 @@ export class LoopDetectionService {
           return false;
         }
 
-        // Extract sentences from the content. A sentence is defined as a block of text
-        // ending with a punctuation mark.
-        const sentences = this.accumulatedContent.match(/[^.!?]+[.!?]/g);
+        // Only re-extract sentences if content has grown significantly
+        if (
+          this.accumulatedContent.length - this.lastContentLength > 100 ||
+          this.cachedSentences.length === 0
+        ) {
+          this.cachedSentences =
+            this.accumulatedContent.match(/[^.!?]+[.!?]/g) || [];
+          this.lastContentLength = this.accumulatedContent.length;
+        }
 
         // We need at least two sentences to check for a loop.
-        if (!sentences || sentences.length < 2) {
+        if (this.cachedSentences.length < 2) {
           return false;
         }
 
-        const lastSentence = sentences[sentences.length - 1].trim();
+        const lastSentence =
+          this.cachedSentences[this.cachedSentences.length - 1].trim();
 
         if (lastSentence === '') {
           return false;
         }
 
-        // Need to escape special characters for the regex.
-        const escapedSentence = lastSentence.replace(
-          /[.*+?^${}()|[\\]\\]/g,
-          '\\$&',
-        );
-        const regex = new RegExp(escapedSentence, 'g');
-        const count = (this.accumulatedContent.match(regex) || []).length;
-        return count >= CONTENT_LOOP_THRESHOLD;
+        let count = 0;
+        let pos = 0;
+        while (
+          (pos = this.accumulatedContent.indexOf(lastSentence, pos)) !== -1
+        ) {
+          count++;
+          pos += lastSentence.length;
+          if (count >= CONTENT_LOOP_THRESHOLD) {
+            return true;
+          }
+        }
+
+        return false;
       }
       default:
         return false;
@@ -79,5 +96,7 @@ export class LoopDetectionService {
   reset() {
     this.toolCallCounts.clear();
     this.accumulatedContent = '';
+    this.cachedSentences = [];
+    this.lastContentLength = 0;
   }
 }

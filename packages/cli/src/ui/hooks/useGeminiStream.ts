@@ -141,6 +141,8 @@ export const useGeminiStream = (
     [toolCalls],
   );
 
+  const loopDetectedRef = useRef(false);
+
   const onExec = useCallback(async (done: Promise<void>) => {
     setIsResponding(true);
     await done;
@@ -458,6 +460,7 @@ export const useGeminiStream = (
       },
       Date.now(),
     );
+    loopDetectedRef.current = false;
   }, [addItem]);
 
   const processGeminiStreamEvents = useCallback(
@@ -500,7 +503,9 @@ export const useGeminiStream = (
             handleMaxSessionTurnsEvent();
             break;
           case ServerGeminiEventType.LoopDetected:
-            handleLoopDetectedEvent();
+            // handle later because we want to move pending history to history
+            // before we add loop detected message to history
+            loopDetectedRef.current = true;
             break;
           default: {
             // enforces exhaustive switch-case
@@ -521,7 +526,6 @@ export const useGeminiStream = (
       scheduleToolCalls,
       handleChatCompressionEvent,
       handleMaxSessionTurnsEvent,
-      handleLoopDetectedEvent,
     ],
   );
 
@@ -593,6 +597,9 @@ export const useGeminiStream = (
           addItem(pendingHistoryItemRef.current, userMessageTimestamp);
           setPendingHistoryItem(null);
         }
+        if (loopDetectedRef.current) {
+          handleLoopDetectedEvent();
+        }
       } catch (error: unknown) {
         if (error instanceof UnauthorizedError) {
           onAuthError();
@@ -630,6 +637,7 @@ export const useGeminiStream = (
       config,
       startNewPrompt,
       getPromptCount,
+      handleLoopDetectedEvent,
     ],
   );
 
