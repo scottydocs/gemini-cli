@@ -9,6 +9,7 @@ import { GeminiEventType, ServerGeminiStreamEvent } from '../core/turn.js';
 
 const TOOL_CALL_LOOP_THRESHOLD = 5;
 const CONTENT_LOOP_THRESHOLD = 10;
+const MAX_LOOPBACK_WINDOW = 1000;
 
 export class LoopDetectionService {
   private toolCallCounts = new Map<string, number>();
@@ -33,16 +34,40 @@ export class LoopDetectionService {
         const newContent = event.value;
         this.accumulatedContent += newContent;
 
-        if (newContent.trim() === '') {
+        // Limit the accumulated content length.
+        if (this.accumulatedContent.length > MAX_LOOPBACK_WINDOW) {
+          this.accumulatedContent = this.accumulatedContent.slice(
+            this.accumulatedContent.length - MAX_LOOPBACK_WINDOW,
+          );
+        }
+
+        // We only check for repetition when a sentence is likely to be complete,
+        // which we detect by the presence of sentence-ending punctuation.
+        if (!/[.!?]/.test(newContent)) {
+          return false;
+        }
+
+        // Extract sentences from the content. A sentence is defined as a block of text
+        // ending with a punctuation mark.
+        const sentences = this.accumulatedContent.match(/[^.!?]+[.!?]/g);
+
+        // We need at least two sentences to check for a loop.
+        if (!sentences || sentences.length < 2) {
+          return false;
+        }
+
+        const lastSentence = sentences[sentences.length - 1].trim();
+
+        if (lastSentence === '') {
           return false;
         }
 
         // Need to escape special characters for the regex.
-        const escapedContent = newContent.replace(
-          /[.*+?^${}()|[\]\\]/g,
+        const escapedSentence = lastSentence.replace(
+          /[.*+?^${}()|[\\]\\]/g,
           '\\$&',
         );
-        const regex = new RegExp(escapedContent, 'g');
+        const regex = new RegExp(escapedSentence, 'g');
         const count = (this.accumulatedContent.match(regex) || []).length;
         return count >= CONTENT_LOOP_THRESHOLD;
       }
