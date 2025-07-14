@@ -62,27 +62,27 @@ export class LoopDetectionService {
           this.lastContentLength = this.accumulatedContent.length;
         }
 
+        // Extract all sentences from accumulated content for counting
+        const allSentences =
+          this.accumulatedContent.match(/[^.!?]+[.!?]/g) || [];
+
         // We need at least two sentences to check for a loop.
-        if (this.cachedSentences.length < 2) {
+        if (allSentences.length < 2) {
           return false;
         }
 
-        const lastSentence =
-          this.cachedSentences[this.cachedSentences.length - 1].trim();
+        const lastSentence = allSentences[allSentences.length - 1].trim();
 
         if (lastSentence === '') {
           return false;
         }
-
         let count = 0;
-        let pos = 0;
-        while (
-          (pos = this.accumulatedContent.indexOf(lastSentence, pos)) !== -1
-        ) {
-          count++;
-          pos += lastSentence.length;
-          if (count >= CONTENT_LOOP_THRESHOLD) {
-            return true;
+        for (const sentence of allSentences) {
+          if (sentence.trim() === lastSentence) {
+            count++;
+            if (count >= CONTENT_LOOP_THRESHOLD) {
+              return true;
+            }
           }
         }
 

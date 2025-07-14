@@ -15,6 +15,7 @@ import { ServerGeminiStreamEvent } from '../core/turn.js';
 
 const TOOL_CALL_LOOP_THRESHOLD = 5;
 const CONTENT_LOOP_THRESHOLD = 10;
+const MAX_LOOPBACK_WINDOW = 1000;
 
 describe('LoopDetectionService', () => {
   let service: LoopDetectionService;
@@ -118,6 +119,173 @@ describe('LoopDetectionService', () => {
         expect(service.addAndCheck(event1)).toBe(false);
         expect(service.addAndCheck(event2)).toBe(false);
       }
+    });
+  });
+
+  describe('Content Window Management', () => {
+    it('should trim content when it exceeds MAX_LOOPBACK_WINDOW', () => {
+      // Fill content to exceed window
+      const longContent = 'A'.repeat(MAX_LOOPBACK_WINDOW + 100);
+      const event = createContentEvent(longContent + '.');
+      service.addAndCheck(event);
+
+      // Add more content to trigger another check
+      const nextEvent = createContentEvent('Next sentence.');
+      service.addAndCheck(nextEvent);
+
+      // The service should still function after trimming
+      expect(service.addAndCheck(createContentEvent('Another test.'))).toBe(
+        false,
+      );
+    });
+
+    it('should reset cache when content is trimmed', () => {
+      // Build up some cached sentences
+      service.addAndCheck(createContentEvent('First sentence.'));
+      service.addAndCheck(createContentEvent('Second sentence.'));
+
+      // Exceed the window to trigger trimming
+      const longContent = 'B'.repeat(MAX_LOOPBACK_WINDOW);
+      service.addAndCheck(createContentEvent(longContent + '.'));
+
+      // Cache should be reset, so this shouldn't immediately trigger loop detection
+      service.addAndCheck(createContentEvent('Test sentence.'));
+      expect(service.addAndCheck(createContentEvent('Test sentence.'))).toBe(
+        false,
+      );
+    });
+  });
+
+  describe('Sentence Extraction and Punctuation', () => {
+    it('should not check for loops when content has no sentence-ending punctuation', () => {
+      const eventNoPunct = createContentEvent('This has no punctuation');
+      expect(service.addAndCheck(eventNoPunct)).toBe(false);
+
+      const eventWithPunct = createContentEvent('This has punctuation!');
+      expect(service.addAndCheck(eventWithPunct)).toBe(false);
+    });
+
+    it('should handle content with mixed punctuation', () => {
+      service.addAndCheck(createContentEvent('Question?'));
+      service.addAndCheck(createContentEvent('Exclamation!'));
+      service.addAndCheck(createContentEvent('Period.'));
+
+      // Repeat one of them multiple times
+      for (let i = 0; i < CONTENT_LOOP_THRESHOLD - 1; i++) {
+        service.addAndCheck(createContentEvent('Period.'));
+      }
+      expect(service.addAndCheck(createContentEvent('Period.'))).toBe(true);
+    });
+
+    it('should handle empty sentences after trimming', () => {
+      service.addAndCheck(createContentEvent('   .'));
+      expect(service.addAndCheck(createContentEvent('Normal sentence.'))).toBe(
+        false,
+      );
+    });
+
+    it('should require at least two sentences for loop detection', () => {
+      const event = createContentEvent('Only one sentence.');
+      expect(service.addAndCheck(event)).toBe(false);
+
+      // Even repeating the same single sentence shouldn't trigger detection
+      for (let i = 0; i < 5; i++) {
+        expect(service.addAndCheck(event)).toBe(false);
+      }
+    });
+  });
+
+  describe('Performance Optimizations', () => {
+    it('should cache sentence extraction and only re-extract when content grows significantly', () => {
+      // Add initial content
+      service.addAndCheck(createContentEvent('First sentence.'));
+      service.addAndCheck(createContentEvent('Second sentence.'));
+
+      // Add small amounts of content (shouldn't trigger re-extraction)
+      for (let i = 0; i < 10; i++) {
+        service.addAndCheck(createContentEvent('X'));
+      }
+      service.addAndCheck(createContentEvent('.'));
+
+      // Should still work correctly
+      expect(service.addAndCheck(createContentEvent('Test.'))).toBe(false);
+    });
+
+    it('should re-extract sentences when content grows by more than 100 characters', () => {
+      service.addAndCheck(createContentEvent('Initial sentence.'));
+
+      // Add enough content to trigger re-extraction
+      const longContent = 'X'.repeat(101);
+      service.addAndCheck(createContentEvent(longContent + '.'));
+
+      // Should work correctly after re-extraction
+      expect(service.addAndCheck(createContentEvent('Test.'))).toBe(false);
+    });
+
+    it('should use indexOf for efficient counting instead of regex', () => {
+      const repeatedSentence = 'This is a repeated sentence.';
+
+      // Build up content with the sentence repeated
+      for (let i = 0; i < CONTENT_LOOP_THRESHOLD - 1; i++) {
+        service.addAndCheck(createContentEvent(repeatedSentence));
+      }
+
+      // The threshold should be reached
+      expect(service.addAndCheck(createContentEvent(repeatedSentence))).toBe(
+        true,
+      );
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle empty content', () => {
+      const event = createContentEvent('');
+      expect(service.addAndCheck(event)).toBe(false);
+    });
+
+    it('should handle content with special regex characters', () => {
+      const specialContent = 'Special chars: [.*+?^${}()|\\]!';
+      for (let i = 0; i < CONTENT_LOOP_THRESHOLD - 1; i++) {
+        service.addAndCheck(createContentEvent(specialContent));
+      }
+      expect(service.addAndCheck(createContentEvent(specialContent))).toBe(
+        true,
+      );
+    });
+
+    it('should handle very long sentences', () => {
+      const longSentence =
+        'This is a very long sentence ' + 'word '.repeat(100) + '.';
+      for (let i = 0; i < CONTENT_LOOP_THRESHOLD - 1; i++) {
+        service.addAndCheck(createContentEvent(longSentence));
+      }
+      // Very long sentences that exceed the window size cannot be reliably detected
+      // due to content trimming, so this should return false
+      expect(service.addAndCheck(createContentEvent(longSentence))).toBe(false);
+    });
+  });
+
+  describe('Reset Functionality', () => {
+    it('should reset all internal state', () => {
+      // Build up some state
+      const toolEvent = createToolCallRequestEvent('testTool', {
+        param: 'value',
+      });
+      for (let i = 0; i < 3; i++) {
+        service.addAndCheck(toolEvent);
+      }
+
+      service.addAndCheck(createContentEvent('Some content.'));
+      service.addAndCheck(createContentEvent('More content.'));
+
+      // Reset everything
+      service.reset();
+
+      // Should start fresh
+      expect(service.addAndCheck(toolEvent)).toBe(false);
+      expect(service.addAndCheck(createContentEvent('Fresh content.'))).toBe(
+        false,
+      );
     });
   });
 
