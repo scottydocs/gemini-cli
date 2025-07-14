@@ -460,7 +460,6 @@ export const useGeminiStream = (
       },
       Date.now(),
     );
-    loopDetectedRef.current = false;
   }, [addItem]);
 
   const processGeminiStreamEvents = useCallback(
@@ -598,6 +597,7 @@ export const useGeminiStream = (
           setPendingHistoryItem(null);
         }
         if (loopDetectedRef.current) {
+          loopDetectedRef.current = false;
           handleLoopDetectedEvent();
         }
       } catch (error: unknown) {
