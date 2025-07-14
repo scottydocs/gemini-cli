@@ -23,7 +23,7 @@ const homeDirectoryCheck: WarningCheck = {
       ]);
 
       if (workspaceRealPath === homeRealPath) {
-return `Warning: You are running Gemini CLI in your home directory. To prevent accidental file changes and ensure more accurate results, /quit and run the CLI in a project directory.`;
+        return `Warning: You are running Gemini CLI in your home directory. To prevent accidental file changes and ensure more accurate results, /quit and run the CLI in a project directory.`;
       }
       return null;
     } catch (_err: unknown) {
